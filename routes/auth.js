@@ -66,7 +66,6 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    // 🔐 ACCESS TOKEN (short-lived)
     const accessToken = jwt.sign(
       {
         id: user.id,
@@ -77,21 +76,62 @@ router.post("/login", async (req, res) => {
       { expiresIn: "20m" }
     );
 
-    // 🔁 REFRESH TOKEN (long-lived)
     const refreshToken = jwt.sign(
       { id: user.id },
       process.env.JWT_REFRESH_SECRET,
       { expiresIn: "7d" }
     );
 
-    res.json({
-      accessToken,
-      refreshToken,
-    });
+    res.json({ accessToken, refreshToken });
 
   } catch (err) {
     console.error("LOGIN ERROR:", err);
     res.status(500).json({ error: "Server error during login" });
+  }
+});
+
+/**
+ * REFRESH ACCESS TOKEN
+ */
+router.post("/refresh", async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(401).json({ error: "Refresh token required" });
+    }
+
+    const decoded = jwt.verify(
+      refreshToken,
+      process.env.JWT_REFRESH_SECRET
+    );
+
+    const result = await pool.query(
+      "SELECT id, email, is_admin FROM users WHERE id = $1",
+      [decoded.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid refresh token" });
+    }
+
+    const user = result.rows[0];
+
+    const newAccessToken = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        is_admin: user.is_admin,
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "20m" }
+    );
+
+    res.json({ accessToken: newAccessToken });
+
+  } catch (err) {
+    console.error("REFRESH ERROR:", err);
+    res.status(401).json({ error: "Invalid or expired refresh token" });
   }
 });
 
