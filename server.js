@@ -11,16 +11,23 @@ const app = express();
 console.log("SERVER FILE LOADED");
 
 // ✅ CORS MUST COME FIRST
+const allowedOrigins = [process.env.FRONTEND_URL];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://academic-frontend.vercel.app" // future Vercel frontend
-    ],
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS blocked"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   })
 );
+
 
 // ✅ BODY PARSER
 app.use(express.json());
