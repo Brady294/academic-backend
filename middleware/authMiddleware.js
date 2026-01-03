@@ -5,7 +5,12 @@ module.exports = function authMiddleware(req, res, next) {
     return res.status(401).json({ error: "No token provided" });
   }
 
-  const token = authHeader.split(" ")[1];
+  if (!authHeader.startsWith("Bearer ")) {
+  return res.status(401).json({ error: "Invalid authorization format" });
+}
+
+const token = authHeader.split(" ")[1];
+
 
   try {
     const decoded = require("jsonwebtoken").verify(
