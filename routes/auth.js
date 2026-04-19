@@ -19,23 +19,56 @@ router.get("/ping", (req, res) => {
  */
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    let { name, email, password } = req.body;
+
+    name = name?.trim();
+    email = email?.trim().toLowerCase();
+    password = password?.trim();
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: "Missing required fields" });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+
+    const existingUser = await pool.query(
+      "SELECT id, email FROM users WHERE LOWER(email) = LOWER($1)",
+      [email]
+    );
+
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await pool.query(
-      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, email",
+      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email",
       [name, email, hashedPassword]
     );
 
-    res.status(201).json(user.rows[0]);
+    return res.status(201).json(user.rows[0]);
   } catch (err) {
-    console.error("REGISTER ERROR:", err);
-    res.status(400).json({ error: "User already exists or invalid data" });
+    console.error("REGISTER ERROR FULL:", err);
+    console.error("REGISTER ERROR CODE:", err.code);
+    console.error("REGISTER ERROR DETAIL:", err.detail);
+    console.error("REGISTER ERROR MESSAGE:", err.message);
+
+    if (err.code === "23505") {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
+    if (err.code === "23502") {
+      return res.status(400).json({ error: `Missing required database field: ${err.column}` });
+    }
+
+    if (err.code === "42703") {
+      return res.status(500).json({ error: "Database column mismatch in users table" });
+    }
+
+    return res.status(500).json({ error: err.message || "Server error during registration" });
   }
 });
 
