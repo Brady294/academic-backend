@@ -1,6 +1,8 @@
 require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
+const cookieParser = require("cookie-parser");
 
 const pool = require("./db");
 const authRoutes = require("./routes/auth");
@@ -10,29 +12,30 @@ const app = express();
 
 console.log("SERVER FILE LOADED");
 
-// ✅ CORS MUST COME FIRST
-const allowedOrigins = [process.env.FRONTEND_URL];
+// ==========================
+// CORS
+// ==========================
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS blocked"));
-      }
-    },
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
   })
 );
 
+// ==========================
+// MIDDLEWARE
+// ==========================
 
-// ✅ BODY PARSER
 app.use(express.json());
+app.use(cookieParser());
 
-// ✅ ROOT DB HEALTH CHECK
+// ==========================
+// ROOT
+// ==========================
+
 app.get("/", async (req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -43,24 +46,27 @@ app.get("/", async (req, res) => {
   }
 });
 
-// ✅ SIMPLE TEST ROUTE
 app.get("/test", (req, res) => {
   res.send("TEST ROUTE WORKS");
 });
 
-// ✅ AUTH ROUTES
-app.use("/api/auth", authRoutes);
+// ==========================
+// ROUTES
+// ==========================
 
-// ✅ ASSIGNMENT ROUTES
+app.use("/api/auth", authRoutes);
 app.use("/api/assignments", assignmentRoutes);
 
-// ✅ AUTH PING (AFTER ROUTES LOADED)
 app.get("/api/auth/ping", (req, res) => {
   res.send("AUTH ROUTES WORK");
 });
 
-// ✅ START SERVER (ALWAYS LAST)
+// ==========================
+// START SERVER
+// ==========================
+
 const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
