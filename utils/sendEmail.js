@@ -17,13 +17,13 @@ const sendEmail = async ({ to, subject, html }) => {
 
   try {
     const info = await transporter.sendMail({
-      from: `"TopStudyTutor" <${process.env.EMAIL_USER}>`,
+      from: '"TopStudyTutor" <githinjijohn0294@gmail.com>',
       to,
       subject,
       html,
     });
 
-    console.log("Email sent:", info.messageId);
+    console.log("Email sent successfully:", info.messageId);
     return info;
   } catch (error) {
     console.error("EMAIL SEND ERROR:", error);
