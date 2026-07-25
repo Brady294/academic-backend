@@ -52,6 +52,8 @@ router.get("/ping", (req, res) => {
  */
 router.post("/register", async (req, res) => {
   try {
+    console.log("========== REGISTER START ==========");
+
     let { name, email, password, confirmPassword } = req.body;
 
     name = name?.trim();
@@ -77,6 +79,8 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    console.log("STEP 1 - Checking existing user");
+
     const existingUser = await pool.query(
       "SELECT id, email, is_verified FROM users WHERE LOWER(email) = LOWER($1)",
       [email]
@@ -88,11 +92,17 @@ router.post("/register", async (req, res) => {
       });
     }
 
+    console.log("STEP 2 - Hashing password");
+
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const verificationCode = generateVerificationCode();
+
     const verificationCodeExpires = new Date(
       Date.now() + 10 * 60 * 1000
     );
+
+    console.log("STEP 3 - Creating user");
 
     const user = await pool.query(
       `INSERT INTO users
@@ -110,11 +120,14 @@ router.post("/register", async (req, res) => {
       ]
     );
 
-    await sendEmail({
+    console.log("STEP 4 - User created successfully");
+
+    // Send email without blocking the response
+    sendEmail({
       to: email,
       subject: "Verify your TopStudyTutor account",
       html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <div style="font-family: Arial, sans-serif; line-height:1.6;">
           <h2>Verify your TopStudyTutor account</h2>
 
           <p>Hello ${name},</p>
@@ -124,37 +137,43 @@ router.post("/register", async (req, res) => {
           </p>
 
           <p>
-            Use the 6-digit verification code below to activate your account:
+            Use the verification code below:
           </p>
 
-          <h1 style="letter-spacing: 4px;">
+          <h1 style="letter-spacing:4px;">
             ${verificationCode}
           </h1>
 
           <p>
-            This verification code will expire in
+            This code expires in
             <strong>10 minutes</strong>.
           </p>
 
           <p>
-            If you did not create a TopStudyTutor account,
+            If you did not create this account,
             you can safely ignore this email.
           </p>
         </div>
       `,
-    });
+    })
+      .then(() => {
+        console.log(`Verification email sent successfully to ${email}`);
+      })
+      .catch((err) => {
+        console.error("EMAIL SEND ERROR:", err);
+      });
+
+    console.log("STEP 5 - Returning success response");
 
     return res.status(201).json({
       message:
-        "Account created. Please check your email for the verification code.",
+        "Account created successfully. Please check your email for the verification code.",
       email: user.rows[0].email,
       requiresVerification: true,
     });
   } catch (err) {
-    console.error("REGISTER ERROR FULL:", err);
-    console.error("REGISTER ERROR CODE:", err.code);
-    console.error("REGISTER ERROR DETAIL:", err.detail);
-    console.error("REGISTER ERROR MESSAGE:", err.message);
+    console.error("========== REGISTER FAILED ==========");
+    console.error(err);
 
     if (err.code === "23505") {
       return res.status(400).json({
@@ -175,9 +194,7 @@ router.post("/register", async (req, res) => {
     }
 
     return res.status(500).json({
-      error:
-        err.message ||
-        "Server error during registration",
+      error: err.message || "Server error during registration",
     });
   }
 });
@@ -205,7 +222,13 @@ router.post("/verify-email", async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT id, name, email, is_admin, is_verified, verification_code, verification_code_expires
+      `SELECT id,
+              name,
+              email,
+              is_admin,
+              is_verified,
+              verification_code,
+              verification_code_expires
        FROM users
        WHERE LOWER(email) = LOWER($1)`,
       [email]
@@ -257,11 +280,16 @@ router.post("/verify-email", async (req, res) => {
            verification_code = NULL,
            verification_code_expires = NULL
        WHERE LOWER(email) = LOWER($1)
-       RETURNING id, name, email, is_admin, is_verified`,
+       RETURNING id,
+                 name,
+                 email,
+                 is_admin,
+                 is_verified`,
       [email]
     );
 
     const verifiedUser = verifiedResult.rows[0];
+
     const tokens = createTokens(verifiedUser);
 
     return res.status(200).json({
@@ -283,6 +311,8 @@ router.post("/verify-email", async (req, res) => {
  */
 router.post("/resend-code", async (req, res) => {
   try {
+    console.log("========== RESEND VERIFICATION CODE ==========");
+
     let { email } = req.body;
 
     email = email?.trim().toLowerCase();
@@ -292,6 +322,8 @@ router.post("/resend-code", async (req, res) => {
         error: "Email is required",
       });
     }
+
+    console.log("STEP 1 - Looking up user");
 
     const result = await pool.query(
       "SELECT id, name, email, is_verified FROM users WHERE LOWER(email) = LOWER($1)",
@@ -312,7 +344,10 @@ router.post("/resend-code", async (req, res) => {
       });
     }
 
+    console.log("STEP 2 - Generating verification code");
+
     const verificationCode = generateVerificationCode();
+
     const verificationCodeExpires = new Date(
       Date.now() + 10 * 60 * 1000
     );
@@ -325,11 +360,13 @@ router.post("/resend-code", async (req, res) => {
       [verificationCode, verificationCodeExpires, email]
     );
 
-    await sendEmail({
+    console.log("STEP 3 - Verification code saved");
+
+    sendEmail({
       to: email,
       subject: "Your new TopStudyTutor verification code",
       html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+        <div style="font-family: Arial, sans-serif; line-height:1.6;">
           <h2>Your new verification code</h2>
 
           <p>Hello ${user.name},</p>
@@ -340,15 +377,15 @@ router.post("/resend-code", async (req, res) => {
           </p>
 
           <p>
-            Use the 6-digit verification code below to activate your account:
+            Use the verification code below:
           </p>
 
-          <h1 style="letter-spacing: 4px;">
+          <h1 style="letter-spacing:4px;">
             ${verificationCode}
           </h1>
 
           <p>
-            This verification code will expire in
+            This verification code expires in
             <strong>10 minutes</strong>.
           </p>
 
@@ -358,7 +395,15 @@ router.post("/resend-code", async (req, res) => {
           </p>
         </div>
       `,
-    });
+    })
+      .then(() => {
+        console.log(`Verification email sent successfully to ${email}`);
+      })
+      .catch((err) => {
+        console.error("RESEND EMAIL ERROR:", err);
+      });
+
+    console.log("STEP 4 - Returning success response");
 
     return res.status(200).json({
       message:
@@ -416,8 +461,7 @@ router.post("/login", async (req, res) => {
 
     if (!user.is_verified) {
       return res.status(403).json({
-        error:
-          "Please verify your email before logging in.",
+        error: "Please verify your email before logging in.",
         requiresVerification: true,
         email: user.email,
       });
@@ -478,8 +522,7 @@ router.post("/refresh", async (req, res) => {
 
     if (!user.is_verified) {
       return res.status(403).json({
-        error:
-          "Please verify your email before continuing.",
+        error: "Please verify your email before continuing.",
       });
     }
 
@@ -502,8 +545,7 @@ router.post("/refresh", async (req, res) => {
     console.error("REFRESH ERROR:", err);
 
     return res.status(401).json({
-      error:
-        "Invalid or expired refresh token",
+      error: "Invalid or expired refresh token",
     });
   }
 });
@@ -514,6 +556,8 @@ router.post("/refresh", async (req, res) => {
  */
 router.post("/forgot-password", async (req, res) => {
   try {
+    console.log("========== FORGOT PASSWORD ==========");
+
     let { email } = req.body;
 
     email = email?.trim().toLowerCase();
@@ -523,6 +567,8 @@ router.post("/forgot-password", async (req, res) => {
         error: "Email is required",
       });
     }
+
+    console.log("STEP 1 - Looking up user");
 
     const result = await pool.query(
       `SELECT id, name, email
@@ -541,12 +587,10 @@ router.post("/forgot-password", async (req, res) => {
 
     const user = result.rows[0];
 
-    // Generate secure random token
-    const resetToken = crypto
-      .randomBytes(32)
-      .toString("hex");
+    console.log("STEP 2 - Generating reset token");
 
-    // Token expires in 30 minutes
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
     const resetTokenExpires = new Date(
       Date.now() + 30 * 60 * 1000
     );
@@ -563,12 +607,13 @@ router.post("/forgot-password", async (req, res) => {
       ]
     );
 
+    console.log("STEP 3 - Reset token saved");
+
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
-    await sendEmail({
+    sendEmail({
       to: user.email,
-      subject:
-        "Reset your TopStudyTutor password",
+      subject: "Reset your TopStudyTutor password",
       html: `
         <div style="font-family: Arial, sans-serif; line-height:1.6;">
           <h2>TopStudyTutor Password Reset</h2>
@@ -620,24 +665,27 @@ router.post("/forgot-password", async (req, res) => {
           </p>
         </div>
       `,
-    });
+    })
+      .then(() => {
+        console.log(`Password reset email sent successfully to ${user.email}`);
+      })
+      .catch((err) => {
+        console.error("FORGOT PASSWORD EMAIL ERROR:", err);
+      });
 
     return res.status(200).json({
       message:
         "If an account with that email exists, a password reset link has been sent.",
     });
   } catch (err) {
-    console.error(
-      "FORGOT PASSWORD ERROR:",
-      err
-    );
+    console.error("FORGOT PASSWORD ERROR:", err);
 
     return res.status(500).json({
-      error:
-        "Server error while processing password reset.",
+      error: "Server error while processing password reset.",
     });
   }
 });
+
 /**
  * RESET PASSWORD
  */
