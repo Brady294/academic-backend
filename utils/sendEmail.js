@@ -1,14 +1,13 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // Use SSL
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  family: 4,
 });
 
 const sendEmail = async ({ to, subject, html }) => {
@@ -17,17 +16,15 @@ const sendEmail = async ({ to, subject, html }) => {
   }
 
   try {
-    await transporter.verify();
-    console.log("SMTP connection established successfully.");
-
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"TopStudyTutor" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
     });
 
-    console.log(`Email sent successfully to ${to}`);
+    console.log("Email sent:", info.messageId);
+    return info;
   } catch (error) {
     console.error("EMAIL SEND ERROR:", error);
     throw error;
