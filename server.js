@@ -7,7 +7,9 @@ const cookieParser = require("cookie-parser");
 const pool = require("./db");
 const authRoutes = require("./routes/auth");
 const assignmentRoutes = require("./routes/assignments");
-
+const dashboardRoutes = require("./routes/dashboard");
+const ordersRoutes = require("./routes/orders");
+const uploadRoutes = require("./routes/uploads");
 const app = express();
 
 console.log("SERVER FILE LOADED");
@@ -31,6 +33,18 @@ app.use(
 
 app.use(express.json());
 app.use(cookieParser());
+app.use("/api/dashboard", dashboardRoutes); 
+app.use("/api/orders", ordersRoutes);
+app.use("/api/uploads", uploadRoutes);
+
+const path = require("path");
+
+app.use(
+  "/uploads",
+  express.static(
+    path.join(__dirname, "uploads")
+  )
+);
 
 // ==========================
 // ROOT
