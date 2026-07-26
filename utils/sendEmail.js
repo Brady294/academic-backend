@@ -1,43 +1,57 @@
-const nodemailer = require("nodemailer");
-
-console.log("EMAIL USER:", process.env.EMAIL_USER);
-console.log("EMAIL PASS EXISTS:", !!process.env.EMAIL_PASS);
-
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false,
-  connectionTimeout: 15000,
-  greetingTimeout: 15000,
-  socketTimeout: 15000,
-  requireTLS: true,
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const axios = require("axios");
 
 const sendEmail = async ({ to, subject, html }) => {
+  if (!process.env.BREVO_API_KEY) {
+    throw new Error("BREVO_API_KEY is missing");
+  }
+
+  if (!process.env.EMAIL_FROM) {
+    throw new Error("EMAIL_FROM is missing");
+  }
+
   try {
-    console.log("Verifying SMTP connection...");
+    console.log("Sending email through Brevo API...");
 
-    await transporter.verify();
+    const response = await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: "TopStudyTutor",
+          email: process.env.EMAIL_FROM,
+        },
+        to: [
+          {
+            email: to,
+          },
+        ],
+        subject,
+        htmlContent: html,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "api-key": process.env.BREVO_API_KEY,
+          Accept: "application/json",
+        },
+        timeout: 30000,
+      }
+    );
 
-    console.log("SMTP connection verified.");
+    console.log("✅ Email sent successfully.");
+    console.log("Brevo Response:", response.data);
 
-    const info = await transporter.sendMail({
-      from: '"TopStudyTutor" <githinjijohn0294@gmail.com>',
-      to,
-      subject,
-      html,
-    });
+    return response.data;
+  } catch (error) {
+    console.error("❌ BREVO API ERROR");
 
-    console.log("Email sent:", info.messageId);
+    if (error.response) {
+      console.error("Status:", error.response.status);
+      console.error("Response:", error.response.data);
+    } else {
+      console.error(error.message);
+    }
 
-    return info;
-  } catch (err) {
-    console.error("SMTP ERROR:", err);
-    throw err;
+    throw error;
   }
 };
 
