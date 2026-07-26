@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const db = require("../db");
-const authenticateToken = require("../middleware/authenticateToken");
+const authenticateToken = require("../middleware/authMiddleware");
 
 /*
 |--------------------------------------------------------------------------

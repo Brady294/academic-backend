@@ -5,7 +5,7 @@ const path = require("path");
 
 const db = require("../db");
 const upload = require("../middleware/upload");
-const authenticateToken = require("../middleware/authenticateToken");
+const authenticateToken = require("../middleware/authMiddleware");
 
 /*
 |--------------------------------------------------------------------------
