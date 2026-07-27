@@ -11,6 +11,12 @@ const dashboardRoutes = require("./routes/dashboard");
 const ordersRoutes = require("./routes/orders");
 const uploadRoutes = require("./routes/uploads");
 const app = express();
+const profileRoutes = require("./routes/profile");
+const settingsRoutes = require("./routes/settings");
+const notificationRoutes = require("./routes/notifications");
+const messageRoutes = require("./routes/messages");
+const downloadRoutes = require("./routes/downloads");
+const revisionRoutes = require("./routes/revisions");
 
 console.log("SERVER FILE LOADED");
 
@@ -36,6 +42,13 @@ app.use(cookieParser());
 app.use("/api/dashboard", dashboardRoutes); 
 app.use("/api/orders", ordersRoutes);
 app.use("/api/uploads", uploadRoutes);
+app.use ("/api/profile", profileRoutes);
+app.use("/api/settings", settingsRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/messages", messageRoutes);
+app.use("/api/downloads", downloadRoutes);
+app.use("/api/revisions", revisionRoutes);
+
 
 const path = require("path");
 
