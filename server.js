@@ -15,7 +15,7 @@ const profileRoutes = require("./routes/profile");
 const settingsRoutes = require("./routes/settings");
 const notificationRoutes = require("./routes/notifications");
 const messageRoutes = require("./routes/messages");
-const downloadRoutes = require("./routes/downloads");
+const downloadRoutes = require("./routes/download");
 const revisionRoutes = require("./routes/revisions");
 
 console.log("SERVER FILE LOADED");
@@ -46,7 +46,7 @@ app.use ("/api/profile", profileRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/messages", messageRoutes);
-app.use("/api/downloads", downloadRoutes);
+app.use("/api/download", downloadRoutes);
 app.use("/api/revisions", revisionRoutes);
 
 
