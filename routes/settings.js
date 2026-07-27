@@ -11,7 +11,7 @@ const {
 
     changePassword
 
-} = require("../controllers/settingsController");
+} = require("../controllers/settingController");
 
 router.get(
 
