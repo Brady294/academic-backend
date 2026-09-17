@@ -8,9 +8,16 @@ const { Server } = require("socket.io");
 
 const pool = require("./db");
 
+// ============================================================
+// ROUTES
+// ============================================================
+
 const authRoutes = require("./routes/auth");
+
 const adminRoutes = require("./routes/admin");
 const adminOrderRoutes = require("./routes/adminOrders");
+const adminOrderActionRoutes = require("./routes/adminOrderActions");
+
 const assignmentRoutes = require("./routes/assignments");
 const dashboardRoutes = require("./routes/dashboard");
 const ordersRoutes = require("./routes/orders");
@@ -22,21 +29,30 @@ const messageRoutes = require("./routes/messages");
 const downloadRoutes = require("./routes/download");
 const revisionRoutes = require("./routes/revisions");
 const orderMessageRoutes = require("./routes/orderMessages");
-const adminOrderActionRoutes = require("./routes/adminOrderActions");
 
+// ============================================================
+// SOCKET.IO
+// ============================================================
 
 const registerSocketHandlers = require("./socket");
 
+// ============================================================
+// PATH
+// ============================================================
+
 const path = require("path");
 
+// ============================================================
+// APP
+// ============================================================
+
 const app = express();
+
 const server = http.createServer(app);
 
-/*
-|--------------------------------------------------------------------------
-| Socket.IO
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// SOCKET.IO CONFIGURATION
+// ============================================================
 
 const io = new Server(server, {
     cors: {
@@ -52,142 +68,223 @@ app.set("io", io);
 
 console.log("SERVER FILE LOADED");
 
-/*
-|--------------------------------------------------------------------------
-| CORS
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// CORS
+// ============================================================
 
 app.use(
     cors({
         origin: process.env.FRONTEND_URL,
         credentials: true,
-        methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-        allowedHeaders: ["Content-Type", "Authorization"],
+        methods: [
+            "GET",
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+        ],
+        allowedHeaders: [
+            "Content-Type",
+            "Authorization",
+        ],
     })
 );
 
-/*
-|--------------------------------------------------------------------------
-| MIDDLEWARE
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// GENERAL MIDDLEWARE
+// ============================================================
 
 app.use(express.json());
+
 app.use(cookieParser());
 
-/*
-|--------------------------------------------------------------------------
-| STATIC FILES
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// STATIC FILES
+// ============================================================
 
 app.use(
     "/uploads",
-    express.static(path.join(__dirname, "uploads"))
+    express.static(
+        path.join(__dirname, "uploads")
+    )
 );
+
+// ============================================================
+// AUTHENTICATION
+// ============================================================
 
 app.use(
-    "/api/admin/order-actions",
-    adminOrderActionsRoutes
+    "/api/auth",
+    authRoutes
 );
 
-/*
-|--------------------------------------------------------------------------
-| API ROUTES
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// ADMIN DASHBOARD
+// ============================================================
+//
+// GET /api/admin/dashboard
+//
+// The admin routes themselves should be protected by:
+// authMiddleware
+// adminMiddleware
+//
+// ============================================================
 
-/*
- * Authentication
- */
-app.use("/api/auth", authRoutes);
+app.use(
+    "/api/admin",
+    adminRoutes
+);
 
-/*
- * Admin
- *
- * Admin dashboard:
- * GET /api/admin/dashboard
- *
- * The route itself is protected by:
- * authMiddleware
- * adminMiddleware
- */
-app.use("/api/admin", adminRoutes);
-
-/*
- * Assignments
- */
-app.use("/api/assignments", assignmentRoutes);
-
-/*
- * Existing dashboard routes
- */
-app.use("/api/dashboard", dashboardRoutes);
-
+// ============================================================
+// ADMIN ORDERS
+// ============================================================
+//
+// Order listing/details:
+//
+// GET    /api/admin/orders
+// GET    /api/admin/orders/:id
+//
+// ============================================================
 
 app.use(
     "/api/admin/orders",
-    adminOrdersRoutes
+    adminOrderRoutes
 );
-/*
- * Orders
- */
-app.use("/api/orders", ordersRoutes);
 
-/*
- * Uploads
- */
-app.use("/api/uploads", uploadRoutes);
+// ============================================================
+// ADMIN ORDER ACTIONS
+// ============================================================
+//
+// Examples:
+//
+// PATCH /api/admin/order-actions/:id/status
+// PATCH /api/admin/order-actions/:id/assign
+//
+// The actual endpoints depend on the contents of
+// routes/adminOrderActions.js
+//
+// ============================================================
 
-/*
- * Profile
- */
-app.use("/api/profile", profileRoutes);
+app.use(
+    "/api/admin/order-actions",
+    adminOrderActionRoutes
+);
 
-/*
- * Settings
- */
-app.use("/api/settings", settingsRoutes);
+// ============================================================
+// ASSIGNMENTS
+// ============================================================
 
-/*
- * Notifications
- */
-app.use("/api/notifications", notificationRoutes);
+app.use(
+    "/api/assignments",
+    assignmentRoutes
+);
 
-/*
- * Messages
- */
-app.use("/api/messages", messageRoutes);
+// ============================================================
+// USER DASHBOARD
+// ============================================================
 
-/*
- * Downloads
- */
-app.use("/api/download", downloadRoutes);
+app.use(
+    "/api/dashboard",
+    dashboardRoutes
+);
 
-/*
- * Revisions
- */
-app.use("/api/revisions", revisionRoutes);
+// ============================================================
+// USER ORDERS
+// ============================================================
 
-/*
- * Order messages
- */
-app.use("/api/order-messages", orderMessageRoutes);
+app.use(
+    "/api/orders",
+    ordersRoutes
+);
 
-/*
-|--------------------------------------------------------------------------
-| ROOT
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// UPLOADS
+// ============================================================
+
+app.use(
+    "/api/uploads",
+    uploadRoutes
+);
+
+// ============================================================
+// PROFILE
+// ============================================================
+
+app.use(
+    "/api/profile",
+    profileRoutes
+);
+
+// ============================================================
+// SETTINGS
+// ============================================================
+
+app.use(
+    "/api/settings",
+    settingsRoutes
+);
+
+// ============================================================
+// NOTIFICATIONS
+// ============================================================
+
+app.use(
+    "/api/notifications",
+    notificationRoutes
+);
+
+// ============================================================
+// MESSAGES
+// ============================================================
+
+app.use(
+    "/api/messages",
+    messageRoutes
+);
+
+// ============================================================
+// DOWNLOADS
+// ============================================================
+
+app.use(
+    "/api/download",
+    downloadRoutes
+);
+
+// ============================================================
+// REVISIONS
+// ============================================================
+
+app.use(
+    "/api/revisions",
+    revisionRoutes
+);
+
+// ============================================================
+// ORDER MESSAGES
+// ============================================================
+
+app.use(
+    "/api/order-messages",
+    orderMessageRoutes
+);
+
+// ============================================================
+// ROOT / DATABASE HEALTH CHECK
+// ============================================================
 
 app.get("/", async (req, res) => {
     try {
         await pool.query("SELECT 1");
 
-        res.send("Database connected successfully");
+        res.send(
+            "Database connected successfully"
+        );
     } catch (err) {
-        console.error(err);
+        console.error(
+            "Database health check failed:",
+            err
+        );
 
         res.status(500).send(
             "Database connection failed"
@@ -195,36 +292,75 @@ app.get("/", async (req, res) => {
     }
 });
 
-/*
-|--------------------------------------------------------------------------
-| TEST ROUTE
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// TEST ROUTE
+// ============================================================
 
 app.get("/test", (req, res) => {
     res.send("TEST ROUTE WORKS");
 });
 
-/*
-|--------------------------------------------------------------------------
-| AUTH PING
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// AUTH PING
+// ============================================================
 
-app.get("/api/auth/ping", (req, res) => {
-    res.send("AUTH ROUTES WORK");
-});
+app.get(
+    "/api/auth/ping",
+    (req, res) => {
+        res.send("AUTH ROUTES WORK");
+    }
+);
 
-/*
-|--------------------------------------------------------------------------
-| START SERVER
-|--------------------------------------------------------------------------
-*/
+// ============================================================
+// 404 HANDLER
+// ============================================================
 
-const PORT = process.env.PORT || 5000;
+app.use(
+    (req, res) => {
+        res.status(404).json({
+            error: "Route not found",
+            path: req.originalUrl,
+        });
+    }
+);
 
-server.listen(PORT, () => {
-    console.log(
-        `Server running on port ${PORT}`
-    );
-});
+// ============================================================
+// GLOBAL ERROR HANDLER
+// ============================================================
+
+app.use(
+    (err, req, res, next) => {
+        console.error(
+            "SERVER ERROR:",
+            err
+        );
+
+        res.status(
+            err.status || 500
+        ).json({
+            error:
+                err.message ||
+                "Internal server error",
+        });
+    }
+);
+
+// ============================================================
+// START SERVER
+// ============================================================
+
+const PORT =
+    process.env.PORT || 5000;
+
+server.listen(
+    PORT,
+    () => {
+        console.log(
+            `Server running on port ${PORT}`
+        );
+
+        console.log(
+            `Frontend URL: ${process.env.FRONTEND_URL}`
+        );
+    }
+);
