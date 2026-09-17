@@ -99,6 +99,36 @@ function getDeadlineHours(deadline) {
 
 /*
 |--------------------------------------------------------------------------
+| Validate timezone
+|--------------------------------------------------------------------------
+|
+| Examples:
+|
+| Africa/Nairobi
+| America/New_York
+| Europe/London
+| Asia/Tokyo
+|
+*/
+
+function isValidTimezone(timezone) {
+  if (!timezone) {
+    return false;
+  }
+
+  try {
+    Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+    });
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
 | Create Order
 |--------------------------------------------------------------------------
 */
@@ -118,6 +148,15 @@ router.post(
         citation_style,
         deadline,
         instructions,
+
+        /*
+         * NEW:
+         * Timezone selected/detected by the client.
+         *
+         * Example:
+         * Africa/Nairobi
+         */
+        client_timezone,
       } = req.body;
 
       /*
@@ -139,6 +178,24 @@ router.post(
             "Please fill all required fields.",
         });
       }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Determine client timezone
+      |--------------------------------------------------------------------------
+      |
+      | The frontend should send the browser timezone.
+      |
+      | If it does not send one, we use UTC as a safe
+      | backend fallback.
+      |
+      */
+
+      const timezone =
+        client_timezone &&
+        isValidTimezone(client_timezone)
+          ? client_timezone
+          : "UTC";
 
       /*
       |--------------------------------------------------------------------------
@@ -202,9 +259,6 @@ router.post(
       |--------------------------------------------------------------------------
       | Technical / Programming Order
       |--------------------------------------------------------------------------
-      |
-      | Technical orders are NOT automatically priced.
-      |
       */
 
       if (technicalOrder) {
@@ -262,7 +316,8 @@ router.post(
           deadline,
           instructions,
           budget,
-          pricing_status
+          pricing_status,
+          client_timezone
         )
 
         VALUES
@@ -278,7 +333,8 @@ router.post(
           $9,
           $10,
           $11,
-          $12
+          $12,
+          $13
         )
 
         RETURNING *
@@ -296,6 +352,12 @@ router.post(
           instructions || "",
           budget,
           pricingStatus,
+
+          /*
+           * NEW:
+           * Save the client's timezone.
+           */
+          timezone,
         ]
       );
 
@@ -452,7 +514,33 @@ router.put(
         pages,
         instructions,
         deadline,
+
+        /*
+         * NEW:
+         */
+        client_timezone,
       } = req.body;
+
+      /*
+      |--------------------------------------------------------------------------
+      | Validate timezone if supplied
+      |--------------------------------------------------------------------------
+      */
+
+      let timezone = client_timezone;
+
+      if (timezone && !isValidTimezone(timezone)) {
+        return res.status(400).json({
+          message:
+            "Invalid client timezone.",
+        });
+      }
+
+      /*
+      |--------------------------------------------------------------------------
+      | Update order
+      |--------------------------------------------------------------------------
+      */
 
       const result = await db.query(
         `
@@ -463,10 +551,11 @@ router.put(
           pages = $3,
           instructions = $4,
           deadline = $5,
+          client_timezone = COALESCE($6, client_timezone),
           updated_at = NOW()
 
-        WHERE id = $6
-        AND user_id = $7
+        WHERE id = $7
+        AND user_id = $8
 
         RETURNING *
         `,
@@ -476,6 +565,7 @@ router.put(
           pages,
           instructions,
           deadline,
+          timezone,
           req.params.id,
           req.user.id,
         ]
