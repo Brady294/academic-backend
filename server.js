@@ -18,6 +18,10 @@ const adminRoutes = require("./routes/admin");
 const adminOrderRoutes = require("./routes/adminOrders");
 const adminOrderActionRoutes = require("./routes/adminOrderActions");
 
+// NEW ADMIN ROUTES
+
+const adminMessagesRoutes = require("./routes/adminMessages");
+
 const assignmentRoutes = require("./routes/assignments");
 const dashboardRoutes = require("./routes/dashboard");
 const ordersRoutes = require("./routes/orders");
@@ -124,10 +128,6 @@ app.use(
 //
 // GET /api/admin/dashboard
 //
-// The admin routes themselves should be protected by:
-// authMiddleware
-// adminMiddleware
-//
 // ============================================================
 
 app.use(
@@ -136,10 +136,35 @@ app.use(
 );
 
 // ============================================================
-// ADMIN ORDERS
+// ADMIN USERS
 // ============================================================
 //
-// Order listing/details:
+// GET    /api/admin/users
+// GET    /api/admin/users/:id
+// PATCH  /api/admin/users/:id
+//
+// ============================================================
+
+
+
+// ============================================================
+// ADMIN MESSAGES
+// ============================================================
+//
+// GET    /api/admin/messages
+// GET    /api/admin/messages/:id
+// POST   /api/admin/messages/:id
+//
+// ============================================================
+
+app.use(
+    "/api/admin/messages",
+    adminMessagesRoutes
+);
+
+// ============================================================
+// ADMIN ORDERS
+// ============================================================
 //
 // GET    /api/admin/orders
 // GET    /api/admin/orders/:id
@@ -155,13 +180,8 @@ app.use(
 // ADMIN ORDER ACTIONS
 // ============================================================
 //
-// Examples:
-//
 // PATCH /api/admin/order-actions/:id/status
 // PATCH /api/admin/order-actions/:id/assign
-//
-// The actual endpoints depend on the contents of
-// routes/adminOrderActions.js
 //
 // ============================================================
 
