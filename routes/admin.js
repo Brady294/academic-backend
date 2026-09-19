@@ -24,7 +24,20 @@ router.get("/dashboard", auth, admin, async (req, res) => {
   try {
     /*
     |--------------------------------------------------------------------------
-    | Platform statistics
+    | PLATFORM STATISTICS
+    |--------------------------------------------------------------------------
+    |
+    | IMPORTANT:
+    |
+    | orders.status is the actual order lifecycle status.
+    |
+    | orders.pricing_status is NOT the same thing.
+    |
+    | Therefore:
+    |
+    | Pending orders  -> status = Pending
+    | Completed       -> status = Completed
+    |
     |--------------------------------------------------------------------------
     */
 
@@ -33,8 +46,16 @@ router.get("/dashboard", auth, admin, async (req, res) => {
         COUNT(*)::int AS total_orders,
 
         COUNT(*) FILTER (
-          WHERE pricing_status = 'pending_review'
+          WHERE LOWER(TRIM(status)) = 'pending'
         )::int AS pending_orders,
+
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(status)) = 'in progress'
+        )::int AS in_progress_orders,
+
+        COUNT(*) FILTER (
+          WHERE LOWER(TRIM(status)) = 'completed'
+        )::int AS completed_orders,
 
         COALESCE(
           SUM(
@@ -48,14 +69,15 @@ router.get("/dashboard", auth, admin, async (req, res) => {
         )::numeric AS total_revenue,
 
         COUNT(DISTINCT user_id)::int AS students
+
       FROM orders
     `);
 
-    const statistics = statisticsResult.rows[0];
+    const statistics = statisticsResult.rows[0] || {};
 
     /*
     |--------------------------------------------------------------------------
-    | Recent orders
+    | RECENT ORDERS
     |--------------------------------------------------------------------------
     */
 
@@ -68,10 +90,17 @@ router.get("/dashboard", auth, admin, async (req, res) => {
         service_type,
         academic_level,
         pages,
-        budget,
-        pricing_status,
+        spacing,
+        citation_style,
         deadline,
-        created_at
+        instructions,
+        budget,
+        status,
+        pricing_status,
+        client_timezone,
+        assigned_admin_id,
+        created_at,
+        updated_at
       FROM orders
       ORDER BY created_at DESC
       LIMIT 10
@@ -79,23 +108,12 @@ router.get("/dashboard", auth, admin, async (req, res) => {
 
     /*
     |--------------------------------------------------------------------------
-    | Additional dashboard counts
-    |--------------------------------------------------------------------------
-    */
-
-    const completedOrdersResult = await pool.query(`
-      SELECT COUNT(*)::int AS completed_orders
-      FROM orders
-      WHERE pricing_status = 'completed'
-    `);
-
-    /*
-    |--------------------------------------------------------------------------
-    | Unread messages
+    | UNREAD MESSAGES
     |--------------------------------------------------------------------------
     |
-    | We intentionally handle this separately so that a messaging-table
-    | problem does not prevent the core dashboard from loading.
+    | The exact messages schema may differ from the dashboard requirement.
+    | We therefore keep this query isolated so a messaging problem does not
+    | prevent the entire admin dashboard from loading.
     |
     */
 
@@ -108,24 +126,21 @@ router.get("/dashboard", auth, admin, async (req, res) => {
         WHERE is_read = false
       `);
 
-      unreadMessages =
-        unreadMessagesResult.rows[0]?.unread_messages || 0;
+      unreadMessages = Number(
+        unreadMessagesResult.rows[0]?.unread_messages || 0
+      );
     } catch (messageError) {
-      /*
-       * The exact message schema can be wired in when we build
-       * the admin messaging section.
-       *
-       * Dashboard should still load if the column/table differs.
-       */
       console.warn(
         "Admin dashboard unread message count unavailable:",
         messageError.message
       );
+
+      unreadMessages = 0;
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Response
+    | RESPONSE
     |--------------------------------------------------------------------------
     */
 
@@ -133,10 +148,20 @@ router.get("/dashboard", auth, admin, async (req, res) => {
       success: true,
 
       statistics: {
-        totalOrders: Number(statistics.total_orders || 0),
+        totalOrders: Number(
+          statistics.total_orders || 0
+        ),
 
         pendingOrders: Number(
           statistics.pending_orders || 0
+        ),
+
+        inProgressOrders: Number(
+          statistics.in_progress_orders || 0
+        ),
+
+        completedOrders: Number(
+          statistics.completed_orders || 0
         ),
 
         totalRevenue: Number(
@@ -147,11 +172,9 @@ router.get("/dashboard", auth, admin, async (req, res) => {
           statistics.students || 0
         ),
 
-        completedOrders: Number(
-          completedOrdersResult.rows[0]?.completed_orders || 0
+        unreadMessages: Number(
+          unreadMessages || 0
         ),
-
-        unreadMessages: Number(unreadMessages || 0),
       },
 
       recentOrders: recentOrdersResult.rows,
